@@ -7,6 +7,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 public class GeneralController {
 
@@ -18,22 +20,31 @@ public class GeneralController {
         if(taskService.saveTask(task) == 1) {
             return new ResponseEntity<>("Created.", HttpStatus.CREATED);
         } else {
-            return new ResponseEntity<>("Forbidden.", HttpStatus.FORBIDDEN);
+            return new ResponseEntity<>("Bad request.", HttpStatus.BAD_REQUEST);
         }
     }
 
     @PutMapping("/tasks/{id}")
-    public String editTask(@PathVariable int id) {
-        return "null";
+    public ResponseEntity<String> editTask(@PathVariable long id, @RequestBody Task task) {
+        if(taskService.updateTask(id, task) == 1) {
+            return new ResponseEntity<>("OK.", HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>("Forbidden.", HttpStatus.FORBIDDEN);
+        }
     }
 
     @GetMapping("/tasks/{id}")
-    public String getTask(@PathVariable int id) {
-        return "null";
+    public ResponseEntity<Task> getTask(@PathVariable long id) {
+        Task task = taskService.findById(id);
+        if (task == null) {
+            return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
+        } else {
+            return new ResponseEntity<>(taskService.findById(id), HttpStatus.OK);
+        }
     }
 
-    @GetMapping("/tasks?status={status}")
-    public String getFilteredTasksByStatus(@PathVariable int id) {
-        return "null";
+    @GetMapping("/tasks")
+    public ResponseEntity<List<Task>> getFilteredTasksByStatus(@RequestParam Task.Status status) {
+        return new ResponseEntity<>(taskService.getTasksFilteredByStatus(status), HttpStatus.OK);
     }
 }

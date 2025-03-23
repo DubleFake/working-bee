@@ -2,25 +2,31 @@ package com.homework.task.database;
 
 public class Task {
 
-    private Long id;
-    private enum status{ACTIVE, INACTIVE};
+    private long id;
+    private Status status;
     private String name;
     private String description;
+
+    public enum Status {
+        ACTIVE,
+        INACTIVE
+    }
 
     public Task() {
     }
 
-    public Task(Long id, String name, String description) {
+    public Task(long id, String name, String description, Status status) {
         this.id = id;
         this.name = name;
         this.description = description;
+        this.status = status;
     }
 
-    public Long getId() {
+    public long getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(long id) {
         this.id = id;
     }
 
@@ -38,5 +44,13 @@ public class Task {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public Status getStatus() {
+        return status;
+    }
+
+    public void setStatus(Status status) {
+        this.status = status;
     }
 }
