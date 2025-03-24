@@ -1,4 +1,4 @@
-package com.homework.task.database;
+package com.homework.task.database.templates;
 
 public class Task {
 

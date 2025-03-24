@@ -1,7 +1,7 @@
 package com.homework.task;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.homework.task.database.Task;
+import com.homework.task.database.templates.Task;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -277,7 +277,7 @@ class GeneralControllerTests {
 	}
 
 	@Test
-	void changeName() throws Exception {
+	void changeTaskName() throws Exception {
 		TaskRequest task1 = new TaskRequest(Task.Status.ACTIVE, "Task 1", "Task 1 desc");
 		createTask(task1);
 
@@ -300,7 +300,7 @@ class GeneralControllerTests {
 	}
 
 	@Test
-	void changeDescription() throws Exception {
+	void changeTaskDescription() throws Exception {
 		TaskRequest task1 = new TaskRequest(Task.Status.ACTIVE, "Task 1", "Task 1 desc");
 		createTask(task1);
 
@@ -323,7 +323,7 @@ class GeneralControllerTests {
 	}
 
 	@Test
-	void changeDescriptionToBlank() throws Exception {
+	void changeTaskDescriptionToBlank() throws Exception {
 		TaskRequest task1 = new TaskRequest(Task.Status.ACTIVE, "Task 1", "Task 1 desc");
 		createTask(task1);
 
