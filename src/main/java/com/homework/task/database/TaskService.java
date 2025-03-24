@@ -25,7 +25,7 @@ public class TaskService {
             task.setStatus(newTask.getStatus());
             task.setName(newTask.getName());
             task.setDescription(newTask.getDescription());
-            return taskRepository.saveTask(task);  // Save the updated record
+            return taskRepository.updateTask(id, task);  // Save the updated record
         } else {
             return 0;
         }

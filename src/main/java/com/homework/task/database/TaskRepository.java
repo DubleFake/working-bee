@@ -22,10 +22,23 @@ public class TaskRepository {
 
     }
 
+    public int updateTask(long id, Task task) {
+        String sql = "UPDATE tasks SET name = ?, description = ?, status = ? WHERE id = ?";
+        if (task.getName() != null && !task.getName().isEmpty() && task.getStatus() != null) {
+            return jdbcTemplate.update(sql, task.getName(), task.getDescription(), task.getStatus().name(), id);
+        } else {
+            return 0;
+        }
+
+    }
+
     public Task findById(long id) {
         String sql = "SELECT * FROM tasks WHERE id = ?";
-        jdbcTemplate.query
-        return jdbcTemplate.query(sql, new TaskRowMapper(), id);
+        List<Task> tasks = jdbcTemplate.query(sql, new TaskRowMapper(), id);
+        if (tasks.isEmpty()) {
+            return null;
+        }
+        return tasks.getFirst();
     }
 
     public List<Task> getTasksFilteredByStatus(Task.Status status) {
