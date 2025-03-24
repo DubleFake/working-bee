@@ -58,7 +58,7 @@ class TaskRequest {
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-class GeneralControllerTests {
+class TaskControllerTests {
 
 	private static final String BASE_URL = "http://localhost:8080/tasks";
 	private static final ObjectMapper objectMapper = new ObjectMapper();
