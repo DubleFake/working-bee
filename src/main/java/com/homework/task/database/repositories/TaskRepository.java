@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class TaskRepository {
@@ -22,10 +23,14 @@ public class TaskRepository {
      * @param task - The task object to be saved into the database.
      * @return int - The number of rows affected by the insert operation (typically 1 if successful, 0 if not).
      */
-    public int saveTask(Task task) {
-        String sql = "INSERT INTO tasks (name, description, status) VALUES (?, ?, ?)";
+    public int saveTask(Task task, String username) {
+        String sql = "INSERT INTO tasks (name, description, status, user_id) VALUES (?, ?, ?, ?)";
+        String slq2 = "SELECT id FROM users WHERE username = ?";
+
+        long id = jdbcTemplate.queryForObject(slq2, long.class, username);
+
         if (task.getName() != null && !task.getName().isEmpty() && task.getStatus() != null) {
-            return jdbcTemplate.update(sql, task.getName(), task.getDescription(), task.getStatus().name());
+            return jdbcTemplate.update(sql, task.getName(), task.getDescription(), task.getStatus().name(), id);
         } else {
             return 0;
         }
@@ -59,9 +64,9 @@ public class TaskRepository {
      * @param id - The ID of the task to retrieve.
      * @return task - The task object with the specified ID, or null if no task is found.
      */
-    public Task findById(long id) {
-        String sql = "SELECT * FROM tasks WHERE id = ?";
-        List<Task> tasks = jdbcTemplate.query(sql, new TaskRowMapper(), id);
+    public Task findById(long id, String username) {
+        String sql = "SELECT * FROM tasks AS t LEFT JOIN users AS u ON t.user_id = u.id WHERE t.id = ? AND u.username = ?";
+        List<Task> tasks = jdbcTemplate.query(sql, new TaskRowMapper(), id, username);
         if (tasks.isEmpty()) {
             return null;
         }
@@ -75,9 +80,9 @@ public class TaskRepository {
      * @param status - The status to filter tasks by.
      * @return list - A list of tasks with the given status, or an empty list if no tasks match the status.
      */
-    public List<Task> getTasksFilteredByStatus(Task.Status status) {
-        String sql = "SELECT * FROM tasks WHERE status = ?";
-        return jdbcTemplate.query(sql, new TaskRowMapper(), status.name());
+    public List<Task> getTasksFilteredByStatus(Task.Status status, String username) {
+        String sql = "SELECT * FROM tasks AS t LEFT JOIN users AS u ON t.user_id = u.id WHERE status = ? AND u.username = ?";
+        return jdbcTemplate.query(sql, new TaskRowMapper(), status.name(), username);
     }
 
 }

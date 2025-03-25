@@ -20,10 +20,4 @@ public class InMemoryTokenStore implements TokenStore {
     public Optional<String> getToken(String username) {
         return Optional.ofNullable(tokens.get(username));
     }
-
-    @Override
-    public boolean isTokenValid(String token) {
-        // Implement logic to check if the token is valid (e.g., check expiry)
-        return true; // Example placeholder; implement actual token validation logic
-    }
 }

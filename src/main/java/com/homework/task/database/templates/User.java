@@ -1,5 +1,11 @@
 package com.homework.task.database.templates;
 
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+
+import java.util.Collection;
+import java.util.Collections;
+
 public class User {
     private long id;
     private String username;
@@ -62,5 +68,9 @@ public class User {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        // Convert the role string into a GrantedAuthority object
+        return Collections.singletonList(new SimpleGrantedAuthority(role.name()));
     }
 }

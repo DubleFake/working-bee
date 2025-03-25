@@ -5,6 +5,9 @@ import com.homework.task.database.services.TaskService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,6 +18,18 @@ public class TaskController {
     @Autowired
     private TaskService taskService;
 
+    private String getPrincipalUsername() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username;
+
+        if (authentication.getPrincipal() instanceof UserDetails userDetails) {
+            username = userDetails.getUsername();
+        } else {
+            username = authentication.getPrincipal().toString();
+        }
+        return username;
+    }
+
     /**
      * Creates a new task.
      * This method maps to the HTTP POST request at `/tasks`. It receives a task object in the request body and attempts to save it.
@@ -24,9 +39,11 @@ public class TaskController {
      * @param task - The task object to be saved, passed in the request body.
      * @return responseEntity - A ResponseEntity containing the result message and appropriate HTTP status code.
      */
+
     @PostMapping("/tasks")
     public ResponseEntity<String> saveTask(@RequestBody Task task) {
-        if(taskService.saveTask(task) == 1) {
+
+        if(taskService.saveTask(task, getPrincipalUsername()) == 1) {
             return new ResponseEntity<>("Created.", HttpStatus.CREATED);
         } else {
             return new ResponseEntity<>("Bad request.", HttpStatus.BAD_REQUEST);
@@ -45,7 +62,8 @@ public class TaskController {
      */
     @PutMapping("/tasks/{id}")
     public ResponseEntity<String> editTask(@PathVariable long id, @RequestBody Task task) {
-        if(taskService.updateTask(id, task) == 1) {
+
+        if(taskService.updateTask(id, task, getPrincipalUsername()) == 1) {
             return new ResponseEntity<>("OK.", HttpStatus.OK);
         } else {
             return new ResponseEntity<>("Forbidden.", HttpStatus.FORBIDDEN);
@@ -62,11 +80,14 @@ public class TaskController {
  */
     @GetMapping("/tasks/{id}")
     public ResponseEntity<Task> getTask(@PathVariable long id) {
-        Task task = taskService.findById(id);
+
+        String username = getPrincipalUsername();
+
+        Task task = taskService.findById(id, username);
         if (task == null) {
             return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
         } else {
-            return new ResponseEntity<>(taskService.findById(id), HttpStatus.OK);
+            return new ResponseEntity<>(taskService.findById(id, username), HttpStatus.OK);
         }
     }
 
@@ -80,6 +101,6 @@ public class TaskController {
      */
     @GetMapping("/tasks")
     public ResponseEntity<List<Task>> getFilteredTasksByStatus(@RequestParam Task.Status status) {
-        return new ResponseEntity<>(taskService.getTasksFilteredByStatus(status), HttpStatus.OK);
+        return new ResponseEntity<>(taskService.getTasksFilteredByStatus(status, getPrincipalUsername()), HttpStatus.OK);
     }
 }

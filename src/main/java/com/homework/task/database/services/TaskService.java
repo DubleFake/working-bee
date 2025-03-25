@@ -19,8 +19,8 @@ public class TaskService {
      * @param task - The task object to be saved.
      * @return int - The number of rows affected (usually 1 if successful, 0 if not).
      */
-    public int saveTask(Task task) {
-        return taskRepository.saveTask(task);
+    public int saveTask(Task task, String username) {
+        return taskRepository.saveTask(task, username);
     }
 
     /**
@@ -29,8 +29,8 @@ public class TaskService {
      * @param id - The ID of the task to find.
      * @return Task - The task object with the given ID, or null if no task is found.
      */
-    public Task findById(long id) {
-        return taskRepository.findById(id);
+    public Task findById(long id, String username) {
+        return taskRepository.findById(id, username);
     }
 
     /**
@@ -42,8 +42,8 @@ public class TaskService {
      * @param newTask - The task object containing the new data to update the existing task.
      * @return int - The number of rows affected (usually 1 if the update is successful, 0 if the task is not found).
      */
-    public int updateTask(long id, Task newTask) {
-        Task task = taskRepository.findById(id);
+    public int updateTask(long id, Task newTask, String username) {
+        Task task = taskRepository.findById(id, username);
         if (task != null) {
             task.setStatus(newTask.getStatus());
             task.setName(newTask.getName());
@@ -60,8 +60,8 @@ public class TaskService {
      * @param status - The status to filter tasks by.
      * @return list - A list of tasks that have the given status, or an empty list if no tasks match.
      */
-    public List<Task> getTasksFilteredByStatus(Task.Status status) {
-        return taskRepository.getTasksFilteredByStatus(status);
+    public List<Task> getTasksFilteredByStatus(Task.Status status, String username) {
+        return taskRepository.getTasksFilteredByStatus(status, username);
     }
 
 }

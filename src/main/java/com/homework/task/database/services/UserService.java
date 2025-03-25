@@ -4,16 +4,32 @@ import com.homework.task.database.repositories.UserRepository;
 import com.homework.task.database.templates.User;
 import com.homework.task.database.templates.UserRequest;
 import com.homework.task.web.security.PasswordManager;
+import com.homework.task.web.security.interfaces.TokenStore;
+import com.homework.task.web.security.jwt.JwtUtility;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.security.NoSuchAlgorithmException;
+import java.util.Optional;
 
 @Service
 public class UserService {
 
     @Autowired
     UserRepository userRepository;
+
+    @Autowired
+    private JwtUtility jwtUtil;
+
+    @Autowired
+    private TokenBlacklistService tokenBlacklistService;
+
+    @Autowired
+    private final TokenStore tokenStore;
+
+    public UserService(TokenStore tokenStore) {
+        this.tokenStore = tokenStore;
+    }
 
     public int createUser(UserRequest userRequest) {
         User user = new User();
@@ -30,20 +46,32 @@ public class UserService {
         return 0;
     }
 
-    public boolean login(UserRequest userRequest) {
+    public String login(UserRequest userRequest) throws NoSuchAlgorithmException {
         User user = userRepository.findByUsername(userRequest.getUsername());
-        try {
             if (user != null && PasswordManager.verifyPassword(userRequest.getPassword(), user.getSalt() + ":" + user.getPassword())) {
-                return true;
+                Optional<String> existingToken = tokenStore.getToken(userRequest.getUsername());
+                if (existingToken.isPresent() && !jwtUtil.isTokenExpired(existingToken.get()) && !tokenBlacklistService.isTokenBlacklisted(existingToken.get())) {
+                    // If a valid token is found, blacklist it
+                    tokenBlacklistService.blacklistToken(existingToken.get());
+                }
+
+                String token = jwtUtil.generateToken(userRequest.getUsername());
+                tokenStore.saveToken(userRequest.getUsername(), token, 3600); // 1 hour expiry
+                // If password is valid, generate JWT token
+                return jwtUtil.generateToken(userRequest.getUsername());
             }
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-        return false;
+        return "";
     }
 
-    public int logout() {
-        return 1;
+    public boolean logout(String username) {
+        Optional<String> existingToken = tokenStore.getToken(username);
+        if (existingToken.isPresent() && !tokenBlacklistService.isTokenBlacklisted(existingToken.get())) {
+            // If a valid token is found, blacklist it
+            tokenBlacklistService.blacklistToken(existingToken.get());
+            return true;
+        } else {
+            return false;
+        }
     }
 
 }
