@@ -2,7 +2,6 @@ package com.homework.task.database.services;
 
 import com.homework.task.database.repositories.UserRepository;
 import com.homework.task.database.templates.User;
-import com.homework.task.database.templates.UserRequest;
 import com.homework.task.web.security.PasswordManager;
 import com.homework.task.web.security.interfaces.TokenStore;
 import com.homework.task.web.security.jwt.JwtUtility;
@@ -24,44 +23,77 @@ public class UserService {
     @Autowired
     private TokenBlacklistService tokenBlacklistService;
 
-    @Autowired
     private final TokenStore tokenStore;
+
+    /**
+     * Constructs a UserService with the specified TokenStore.
+     * The constructor injects a TokenStore to manage JWT token storage.
+     *
+     * @param tokenStore - The TokenStore used to store and retrieve tokens for users.
+     */
 
     public UserService(TokenStore tokenStore) {
         this.tokenStore = tokenStore;
     }
 
-    public int createUser(UserRequest userRequest) {
-        User user = new User();
+    /**
+     * Creates a new user and saves them to the repository.
+     * This method hashes the user's password, sets the user's role to 'USER', and saves the new user to the repository.
+     * If password hashing fails, it returns false.
+     *
+     * @param user - The user object containing the new user's details.
+     * @return boolean - True if the user is successfully created and saved, false if an error occurs during the process.
+     */
+
+    public boolean createUser(User user) {
+        User newUser = new User();
         try {
-            String[] saltPasswordCombo = PasswordManager.hashPassword(userRequest.getPassword()).split(":");
-            user.setUsername(userRequest.getUsername());
-            user.setSalt(saltPasswordCombo[0]);
-            user.setPassword(saltPasswordCombo[1]);
-            user.setRole(User.Role.USER);
-            return userRepository.saveUser(user);
+            String[] saltPasswordCombo = PasswordManager.hashPassword(user.getPassword()).split(":");
+            newUser.setUsername(user.getUsername());
+            newUser.setSalt(saltPasswordCombo[0]);
+            newUser.setPassword(saltPasswordCombo[1]);
+            newUser.setRole(User.Role.USER);
+            return userRepository.saveUser(newUser);
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
-        return 0;
+        return false;
     }
 
-    public String login(UserRequest userRequest) throws NoSuchAlgorithmException {
-        User user = userRepository.findByUsername(userRequest.getUsername());
-            if (user != null && PasswordManager.verifyPassword(userRequest.getPassword(), user.getSalt() + ":" + user.getPassword())) {
-                Optional<String> existingToken = tokenStore.getToken(userRequest.getUsername());
+    /**
+     * Logs in a user by verifying their credentials and generating a JWT token.
+     * This method checks the user's username and password, and if they are correct, it generates and returns a JWT token.
+     * If a valid token already exists for the user, it blacklists the old token before generating a new one.
+     *
+     * @param user - The user object containing the user's login credentials.
+     * @throws NoSuchAlgorithmException - If password verification fails due to an algorithm issue.
+     * @return String - A JWT token if the login is successful, or an empty string if the login fails.
+     */
+
+    public String login(User user) throws NoSuchAlgorithmException {
+        User existingUser = userRepository.findByUsername(user.getUsername());
+            if (existingUser != null && PasswordManager.verifyPassword(user.getPassword(), existingUser.getSalt() + ":" + existingUser.getPassword())) {
+                Optional<String> existingToken = tokenStore.getToken(user.getUsername());
                 if (existingToken.isPresent() && !jwtUtil.isTokenExpired(existingToken.get()) && !tokenBlacklistService.isTokenBlacklisted(existingToken.get())) {
                     // If a valid token is found, blacklist it
                     tokenBlacklistService.blacklistToken(existingToken.get());
                 }
 
-                String token = jwtUtil.generateToken(userRequest.getUsername());
-                tokenStore.saveToken(userRequest.getUsername(), token, 3600); // 1 hour expiry
+                String token = jwtUtil.generateToken(user.getUsername());
+                tokenStore.saveToken(user.getUsername(), token, 3600); // 1 hour expiry
                 // If password is valid, generate JWT token
-                return jwtUtil.generateToken(userRequest.getUsername());
+                return jwtUtil.generateToken(user.getUsername());
             }
         return "";
     }
+
+    /**
+     * Logs out the user by blacklisting their existing JWT token.
+     * This method checks if a valid token exists for the user, and if it does, it blacklists the token to prevent future use.
+     *
+     * @param username - The username of the user logging out.
+     * @return boolean - True if the logout is successful and the token is blacklisted, false if no valid token is found.
+     */
 
     public boolean logout(String username) {
         Optional<String> existingToken = tokenStore.getToken(username);

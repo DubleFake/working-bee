@@ -25,10 +25,33 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     @Autowired
     private TokenBlacklistService tokenBlacklistService;
 
+    /**
+     * Constructs a JwtRequestFilter with the specified JWT utility and user details service.
+     * This constructor initializes the filter with the necessary dependencies:
+     * - `JwtUtility` for handling JWT token operations.
+     * - `UserDetailsService` for loading user details based on the username.
+     *
+     * @param jwtUtil - The utility class for managing JWT token operations (e.g., extracting username, validating token).
+     * @param userDetailsService - The service used to load user details by username.
+     */
+
     public JwtRequestFilter(JwtUtility jwtUtil, UserDetailsService userDetailsService) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
     }
+
+    /**
+     * Filters HTTP requests to check the presence and validity of a JWT token in the "Authorization" header.
+     * This method attempts to extract a JWT token from the request header and validate it. If the token is valid and not blacklisted,
+     * it sets the user authentication in the SecurityContext. If the token is invalid or blacklisted, it returns an HTTP 401 (Unauthorized) error.
+     *
+     * @param request - The HTTP request to be filtered.
+     * @param response - The HTTP response that can be modified if the token is invalid.
+     * @param chain - The filter chain that continues the request processing.
+     * @throws ServletException - If an error occurs during the filtering process.
+     * @throws IOException - If an error occurs while handling the HTTP request or response.
+     * @throws SignatureException - If the JWT signature is invalid.
+     */
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -38,7 +61,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
         String username = null;
         String jwt = null;
 
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+        if (authorizationHeader != null && (authorizationHeader.startsWith("Bearer ") || authorizationHeader.startsWith("bearer "))) {
             jwt = authorizationHeader.substring(7);
             if (tokenBlacklistService.isTokenBlacklisted(jwt)) {
                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");

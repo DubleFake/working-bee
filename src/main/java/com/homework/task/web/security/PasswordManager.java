@@ -7,23 +7,36 @@ import java.util.Base64;
 
 public class PasswordManager {
 
-    // Method to hash the password with a generated salt and return both as a single string
-    public static String hashPassword(String password) throws NoSuchAlgorithmException {
-        // Generate a random salt
-        byte[] salt = generateSalt();
+    /**
+     * Hashes the given password using a salt and the SHA-256 algorithm.
+     * This method generates a salt, hashes the password with the salt, and then returns a string containing
+     * the salt and the hashed password. The salt is encoded as a hexadecimal string, and the hashed password is
+     * Base64-encoded.
+     *
+     * @param password - The password to hash.
+     * @throws NoSuchAlgorithmException - If the hashing algorithm (SHA-256) or the salt generation algorithm (SHA1PRNG) is not available.
+     * @return String - A string containing the salt (hex) and the hashed password (Base64-encoded), separated by a colon.
+     */
 
-        // Hash the password with the salt
+    public static String hashPassword(String password) throws NoSuchAlgorithmException {
+
+        byte[] salt = generateSalt();
         byte[] hashedPassword = hash(password, salt);
 
-        // Combine the salt (in hexadecimal) and the hashed password (in Base64)
         String saltAsString = bytesToHex(salt);
         String hashedPasswordAsString = Base64.getEncoder().encodeToString(hashedPassword);
 
-        // Return the salt and the hashed password, separated by a colon
         return saltAsString + ":" + hashedPasswordAsString;
     }
 
-    // Method to generate a salt using SecureRandom
+    /**
+     * Generates a random salt using the SHA1PRNG algorithm.
+     * This method generates a 16-byte salt that is used in password hashing to add randomness and increase security.
+     *
+     * @throws NoSuchAlgorithmException - If the SHA1PRNG algorithm is not available.
+     * @return byte[]- A 16-byte salt.
+     */
+
     private static byte[] generateSalt() throws NoSuchAlgorithmException {
         SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
         byte[] salt = new byte[16];  // 16 bytes salt
@@ -31,14 +44,31 @@ public class PasswordManager {
         return salt;
     }
 
-    // Method to hash the password with the salt using SHA-256
+    /**
+     * Hashes the given password with the provided salt using the SHA-256 algorithm.
+     * This method uses SHA-256 to hash the password, incorporating the provided salt into the hashing process.
+     *
+     * @param password - The password to hash.
+     * @param salt - The salt to use in the hashing process.
+     * @throws NoSuchAlgorithmException - If the hashing algorithm (SHA-256) is not available.
+     * @return byte[] - A byte array containing the hashed password.
+     */
+
     private static byte[] hash(String password, byte[] salt) throws NoSuchAlgorithmException {
         MessageDigest md = MessageDigest.getInstance("SHA-256");
-        md.update(salt);  // Add the salt to the hash input
-        return md.digest(password.getBytes());  // Hash the password
+        md.update(salt);
+        return md.digest(password.getBytes());
     }
 
-    // Method to convert byte array to a hexadecimal string
+    /**
+     * Converts a byte array into a hexadecimal string.
+     * This method takes a byte array and converts each byte into its corresponding two-character hexadecimal
+     * representation, resulting in a string of hexadecimal characters.
+     *
+     * @param bytes - The byte array to convert.
+     * @return String - A string representing the byte array in hexadecimal format.
+     */
+
     private static String bytesToHex(byte[] bytes) {
         StringBuilder hexString = new StringBuilder();
         for (byte b : bytes) {
@@ -51,7 +81,15 @@ public class PasswordManager {
         return hexString.toString();
     }
 
-    // Method to convert a hexadecimal string back to a byte array
+    /**
+     * Converts a hexadecimal string back into a byte array.
+     * This method takes a string containing hexadecimal characters and converts it into a byte array,
+     * effectively reversing the conversion done by `bytesToHex`.
+     *
+     * @param hex - The hexadecimal string to convert.
+     * @return byte[] - A byte array representing the hexadecimal string.
+     */
+
     private static byte[] hexToBytes(String hex) {
         int len = hex.length();
         byte[] data = new byte[len / 2];
@@ -62,16 +100,24 @@ public class PasswordManager {
         return data;
     }
 
+    /**
+     * Verifies if the given password matches the stored hashed password.
+     * This method splits the stored hash into the salt and hashed password components. It then hashes the provided
+     * password using the same salt and compares it with the stored hashed password to verify if they match.
+     *
+     * @param password - The password to verify.
+     * @param storedHash - The stored hash containing the salt and hashed password (salt:hashedPassword).
+     * @throws NoSuchAlgorithmException - If the hashing algorithm (SHA-256) or the salt generation algorithm (SHA1PRNG) is not available.
+     * @return boolean - True if the provided password matches the stored hashed password, false otherwise.
+     */
+
     public static boolean verifyPassword(String password, String storedHash) throws NoSuchAlgorithmException {
-        // Split the stored salt and hash
         String[] parts = storedHash.split(":");
-        byte[] salt = hexToBytes(parts[0]);  // Convert the salt back from hex
+        byte[] salt = hexToBytes(parts[0]);
         byte[] storedHashedPassword = Base64.getDecoder().decode(parts[1]);
 
-        // Hash the input password with the same salt
         byte[] hashedPassword = hash(password, salt);
 
-        // Compare the hashes
         return MessageDigest.isEqual(hashedPassword, storedHashedPassword);
     }
 

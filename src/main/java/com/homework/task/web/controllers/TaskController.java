@@ -18,6 +18,15 @@ public class TaskController {
     @Autowired
     private TaskService taskService;
 
+    /**
+     * Retrieves the username of the currently authenticated user.
+     * This method extracts the username of the currently authenticated user from the SecurityContext.
+     * It checks if the principal is an instance of `UserDetails` to obtain the username; if not, it falls back
+     * to calling `toString()` on the principal.
+     *
+     * @return String - The username of the authenticated user.
+     */
+
     private String getPrincipalUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username;
@@ -31,19 +40,20 @@ public class TaskController {
     }
 
     /**
-     * Creates a new task.
-     * This method maps to the HTTP POST request at `/tasks`. It receives a task object in the request body and attempts to save it.
-     * If the task is successfully created, it returns a response with status code 201 (Created).
-     * If there is an issue with the task (e.g., invalid data), it returns a response with status code 400 (Bad Request).
+     * Creates a new task and saves it to the database.
+     * This method attempts to save a new task to the database. The task is saved using the `taskService.saveTask` method,
+     * and the authenticated user's username is automatically passed along to associate the task with the current user.
+     * If the task is successfully created, the response will be HTTP 201 (Created). If there is an issue with the request,
+     * it returns HTTP 400 (Bad Request).
      *
-     * @param task - The task object to be saved, passed in the request body.
-     * @return responseEntity - A ResponseEntity containing the result message and appropriate HTTP status code.
+     * @param task - The task object to be saved.
+     * @return ResponseEntity - A response entity with a message indicating the success or failure of the operation.
      */
 
     @PostMapping("/tasks")
     public ResponseEntity<String> saveTask(@RequestBody Task task) {
 
-        if(taskService.saveTask(task, getPrincipalUsername()) == 1) {
+        if(taskService.saveTask(task, getPrincipalUsername())) {
             return new ResponseEntity<>("Created.", HttpStatus.CREATED);
         } else {
             return new ResponseEntity<>("Bad request.", HttpStatus.BAD_REQUEST);
@@ -51,33 +61,38 @@ public class TaskController {
     }
 
     /**
-     * Edits an existing task.
-     * This method maps to the HTTP PUT request at `/tasks/{id}`. It receives the task ID as a path variable and a task object in the request body.
-     * If the task is successfully updated, it returns a response with status code 200 (OK).
-     * If there is an issue (e.g., task not found or invalid data), it returns a response with status code 403 (Forbidden).
+     * Updates an existing task in the database.
+     * This method attempts to update an existing task with the specified ID. The update is performed using the `taskService.updateTask` method,
+     * and the authenticated user's username is automatically passed to ensure that the task is updated for the correct user.
+     * If the task is successfully updated, the response will be HTTP 200 (OK). If the user is not authorized to edit the task,
+     * it returns HTTP 403 (Forbidden).
      *
-     * @param id - The ID of the task to update, passed as a path variable.
-     * @param task - The task object containing the updated data, passed in the request body.
-     * @return responseEntity - A ResponseEntity containing the result message and appropriate HTTP status code.
+     * @param id - The ID of the task to be updated.
+     * @param task - The task object containing the updated details.
+     * @return ResponseEntity - A response entity with a message indicating the success or failure of the operation.
      */
+
     @PutMapping("/tasks/{id}")
     public ResponseEntity<String> editTask(@PathVariable long id, @RequestBody Task task) {
 
-        if(taskService.updateTask(id, task, getPrincipalUsername()) == 1) {
+        if(taskService.updateTask(id, task, getPrincipalUsername())) {
             return new ResponseEntity<>("OK.", HttpStatus.OK);
         } else {
             return new ResponseEntity<>("Forbidden.", HttpStatus.FORBIDDEN);
         }
     }
-/**
- * Retrieves a task by its ID.
- * This method maps to the HTTP GET request at `/tasks/{id}`. It receives the task ID as a path variable and returns the task object.
- * If the task with the specified ID is found, it returns the task with a status code of 200 (OK).
- * If the task is not found, it returns a response with status code 403 (Forbidden).
- *
- * @param id - The ID of the task to retrieve, passed as a path variable.
- * @return responseEntity - A ResponseEntity containing the task object and an HTTP status code.
- */
+
+    /**
+     * Retrieves a task by its ID.
+     * This method retrieves a task with the specified ID from the database. The task is fetched using the `taskService.findById` method,
+     * and the username of the authenticated user is passed to ensure that the task belongs to the correct user.
+     * If the task is found, it is returned with HTTP 200 (OK). If the task does not exist or the user is not authorized,
+     * it returns HTTP 403 (Forbidden).
+     *
+     * @param id - The ID of the task to be retrieved.
+     * @return ResponseEntity - A response entity containing the task object and an appropriate HTTP status code.
+     */
+
     @GetMapping("/tasks/{id}")
     public ResponseEntity<Task> getTask(@PathVariable long id) {
 
@@ -92,13 +107,15 @@ public class TaskController {
     }
 
     /**
-     * Retrieves tasks filtered by their status.
-     * This method maps to the HTTP GET request at `/tasks`. It receives the status as a request parameter and returns a list of tasks.
-     * If tasks with the given status are found, it returns them with a status code of 200 (OK).
+     * Retrieves a list of tasks filtered by status.
+     * This method fetches a list of tasks with a specified status, filtered based on the authenticated user's username.
+     * The status is passed as a request parameter, and the tasks are fetched using the `taskService.getTasksFilteredByStatus` method.
+     * The list of tasks is returned with HTTP 200 (OK).
      *
-     * @param status - The status to filter tasks by, passed as a query parameter.
-     * @return responseEntity - A ResponseEntity containing a list of tasks with the specified status and HTTP status code 200 (OK).
+     * @param status - The status of the tasks to be retrieved.
+     * @return ResponseEntity - A response entity containing a list of tasks and HTTP status code 200 (OK).
      */
+
     @GetMapping("/tasks")
     public ResponseEntity<List<Task>> getFilteredTasksByStatus(@RequestParam Task.Status status) {
         return new ResponseEntity<>(taskService.getTasksFilteredByStatus(status, getPrincipalUsername()), HttpStatus.OK);

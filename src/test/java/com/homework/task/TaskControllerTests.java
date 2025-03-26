@@ -1,15 +1,20 @@
 package com.homework.task;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.homework.task.database.services.TokenBlacklistService;
 import com.homework.task.database.templates.Task;
+import com.homework.task.requests.UserRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -60,8 +65,10 @@ class TaskRequest {
 @Transactional
 class TaskControllerTests {
 
-	private static final String BASE_URL = "http://localhost:8080/tasks";
+	private static final String BASE_URL = "http://localhost:8080/";
 	private static final ObjectMapper objectMapper = new ObjectMapper();
+	private static final UserRequest basicUserRequest = new UserRequest("user", "user");
+
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -69,27 +76,74 @@ class TaskControllerTests {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 
-	private void createTask(TaskRequest task) throws Exception {
-		mockMvc.perform(post(BASE_URL)
+	@MockitoBean
+	private TokenBlacklistService tokenBlacklistService;
+
+	private void createTask(TaskRequest task, String token) throws Exception {
+		mockMvc.perform(post(BASE_URL + "/tasks")
 						.content(objectMapper.writeValueAsString(task))
+						.contentType(MediaType.APPLICATION_JSON)
+						.header("Authorization", "Bearer " + token)
+						.accept(MediaType.APPLICATION_JSON))
+				.andExpect(status().isCreated())
+				.andExpect(content().contentType(MediaType.APPLICATION_JSON));
+	}
+
+	private void registerBasicUser() throws Exception {
+		mockMvc.perform(post(BASE_URL + "/register")
+						.content(objectMapper.writeValueAsString(basicUserRequest))
 						.contentType(MediaType.APPLICATION_JSON)
 						.accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isCreated())
 				.andExpect(content().contentType(MediaType.APPLICATION_JSON));
 	}
 
+	private String loginBasicUser() throws Exception {
+		MvcResult mvcResult = mockMvc.perform(post(BASE_URL + "/login")
+						.content(objectMapper.writeValueAsString(basicUserRequest))
+						.contentType(MediaType.APPLICATION_JSON)
+						.accept(MediaType.APPLICATION_JSON))
+				.andExpect(status().isOk())
+				.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+				.andReturn();
+
+		return mvcResult.getResponse().getContentAsString();
+	}
+
 	@AfterEach
 	void resetAutoIncrement() {
 		jdbcTemplate.execute("ALTER TABLE tasks ALTER COLUMN id RESTART WITH 1");
+		jdbcTemplate.execute("ALTER TABLE users ALTER COLUMN id RESTART WITH 1");
+	}
+
+	@AfterEach
+	void resetMocks() {
+		Mockito.reset(tokenBlacklistService);
+	}
+
+	@Test
+	void addTaskWithoutAuthentication() throws Exception {
+		TaskRequest task1 = new TaskRequest(Task.Status.ACTIVE, "Task 1", "Task 1 desc");
+
+		mockMvc.perform(post(BASE_URL + "/tasks")
+						.content(objectMapper.writeValueAsString(task1))
+						.contentType(MediaType.APPLICATION_JSON)
+						.accept(MediaType.APPLICATION_JSON))
+				.andExpect(status().isForbidden());
+
 	}
 
 	@Test
 	void addTask() throws Exception {
 		TaskRequest task1 = new TaskRequest(Task.Status.ACTIVE, "Task 1", "Task 1 desc");
 
-		mockMvc.perform(post(BASE_URL)
+		registerBasicUser();
+		String token = loginBasicUser().split(":")[1];
+
+		mockMvc.perform(post(BASE_URL + "/tasks")
 						.content(objectMapper.writeValueAsString(task1))
 						.contentType(MediaType.APPLICATION_JSON)
+						.header("Authorization", "Bearer " + token)
 						.accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isCreated())
 				.andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -102,9 +156,13 @@ class TaskControllerTests {
 		task1.setName("Task 1");
 		task1.setDescription("Task 1 desc");
 
-		mockMvc.perform(post(BASE_URL)
+		registerBasicUser();
+		String token = loginBasicUser().split(":")[1];
+
+		mockMvc.perform(post(BASE_URL + "/tasks")
 						.content(objectMapper.writeValueAsString(task1))
 						.contentType(MediaType.APPLICATION_JSON)
+						.header("Authorization", "Bearer " + token)
 						.accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -115,9 +173,13 @@ class TaskControllerTests {
 		task1.setStatus(Task.Status.ACTIVE);
 		task1.setName("Task 1");
 
-		mockMvc.perform(post(BASE_URL)
+		registerBasicUser();
+		String token = loginBasicUser().split(":")[1];
+
+		mockMvc.perform(post(BASE_URL + "/tasks")
 						.content(objectMapper.writeValueAsString(task1))
 						.contentType(MediaType.APPLICATION_JSON)
+						.header("Authorization", "Bearer " + token)
 						.accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isCreated())
 				.andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -128,9 +190,13 @@ class TaskControllerTests {
 		task1.setStatus(Task.Status.ACTIVE);
 		task1.setDescription("Task 1 desc");
 
-		mockMvc.perform(post(BASE_URL)
+		registerBasicUser();
+		String token = loginBasicUser().split(":")[1];
+
+		mockMvc.perform(post(BASE_URL + "/tasks")
 						.content(objectMapper.writeValueAsString(task1))
 						.contentType(MediaType.APPLICATION_JSON)
+						.header("Authorization", "Bearer " + token)
 						.accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -138,9 +204,14 @@ class TaskControllerTests {
 	@Test
 	void addEmptyTask() throws Exception {
 		TaskRequest task1 = new TaskRequest();
-		mockMvc.perform(post(BASE_URL)
+
+		registerBasicUser();
+		String token = loginBasicUser().split(":")[1];
+
+		mockMvc.perform(post(BASE_URL + "/tasks")
 						.content(new ObjectMapper().writeValueAsString(task1))
 						.contentType(MediaType.APPLICATION_JSON)
+						.header("Authorization", "Bearer " + token)
 						.accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -149,9 +220,13 @@ class TaskControllerTests {
 	@Test
 	void addTaskWithUnexpectedVariable() throws Exception {
 
-		mockMvc.perform(post(BASE_URL)
+		registerBasicUser();
+		String token = loginBasicUser().split(":")[1];
+
+		mockMvc.perform(post(BASE_URL + "/tasks")
 						.content("{\"status\": \"ACTIVE\",\"name\": \"Task 1\",\"description\": \"Task 1 desc\",\"surprise\": \"This is an unexpected field\"}")
 						.contentType(MediaType.APPLICATION_JSON)
+						.header("Authorization", "Bearer " + token)
 						.accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isCreated())
 				.andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -162,10 +237,14 @@ class TaskControllerTests {
 
 		TaskRequest task1 = new TaskRequest(Task.Status.ACTIVE, "Task 1", "Task 1 desc");
 
-		createTask(task1);
+		registerBasicUser();
+		String token = loginBasicUser().split(":")[1];
 
-		mockMvc.perform(get(BASE_URL + "/1")
-				.contentType(MediaType.APPLICATION_JSON))
+		createTask(task1, token);
+
+		mockMvc.perform(get(BASE_URL + "/tasks/1")
+					.contentType(MediaType.APPLICATION_JSON)
+					.header("Authorization", "Bearer " + token))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("id").value(1))
 				.andExpect(jsonPath("status").value("ACTIVE"))
@@ -176,7 +255,7 @@ class TaskControllerTests {
 
 	@Test
 	void getTaskWithInvalidId() throws Exception {
-		mockMvc.perform(get(BASE_URL + "/999")
+		mockMvc.perform(get(BASE_URL + "/tasks/999")
 						.contentType(MediaType.APPLICATION_JSON))
 				.andExpect(status().isForbidden());
 	}
@@ -188,12 +267,16 @@ class TaskControllerTests {
 		TaskRequest task2 = new TaskRequest(Task.Status.INACTIVE, "Task 2", "Task 2 desc");
 		TaskRequest task3 = new TaskRequest(Task.Status.ACTIVE, "Task 3", "Task 3 desc");
 
-		createTask(task1);
-		createTask(task2);
-		createTask(task3);
+		registerBasicUser();
+		String token = loginBasicUser().split(":")[1];
 
-		mockMvc.perform(get(BASE_URL + "?status=ACTIVE")
-						.contentType(MediaType.APPLICATION_JSON))
+		createTask(task1, token);
+		createTask(task2, token);
+		createTask(task3, token);
+
+		mockMvc.perform(get(BASE_URL + "/tasks?status=ACTIVE")
+						.contentType(MediaType.APPLICATION_JSON)
+						.header("Authorization", "Bearer " + token))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[0].id").value(1))
 				.andExpect(jsonPath("$[0].status").value("ACTIVE"))
@@ -211,11 +294,15 @@ class TaskControllerTests {
 		TaskRequest task1 = new TaskRequest(Task.Status.ACTIVE, "Task 1", "Task 1 desc");
 		TaskRequest task2 = new TaskRequest(Task.Status.INACTIVE, "Task 2", "Task 2 desc");
 
-		createTask(task1);
-		createTask(task2);
+		registerBasicUser();
+		String token = loginBasicUser().split(":")[1];
 
-		mockMvc.perform(get(BASE_URL + "?status=SILLY")
-						.contentType(MediaType.APPLICATION_JSON))
+		createTask(task1, token);
+		createTask(task2, token);
+
+		mockMvc.perform(get(BASE_URL + "/tasks?status=SILLY")
+						.contentType(MediaType.APPLICATION_JSON)
+				.header("Authorization", "Bearer " + token))
 				.andExpect(status().isBadRequest());
 	}
 
@@ -224,29 +311,39 @@ class TaskControllerTests {
 		TaskRequest task1 = new TaskRequest(Task.Status.ACTIVE, "Task 1", "Task 1 desc");
 		TaskRequest task2 = new TaskRequest(Task.Status.INACTIVE, "Task 2", "Task 2 desc");
 
-		createTask(task1);
-		createTask(task2);
+		registerBasicUser();
+		String token = loginBasicUser().split(":")[1];
 
-		mockMvc.perform(get(BASE_URL + "?status=")
-						.contentType(MediaType.APPLICATION_JSON))
+		createTask(task1, token);
+		createTask(task2, token);
+
+		mockMvc.perform(get(BASE_URL + "/tasks?status=")
+						.contentType(MediaType.APPLICATION_JSON)
+				.header("Authorization", "Bearer " + token))
 				.andExpect(status().isBadRequest());
 	}
 
 	@Test
 	void changeTaskStatusToAValidStatus() throws Exception {
 		TaskRequest task1 = new TaskRequest(Task.Status.ACTIVE, "Task 1", "Task 1 desc");
-		createTask(task1);
+
+		registerBasicUser();
+		String token = loginBasicUser().split(":")[1];
+
+		createTask(task1, token);
 
 		TaskRequest newTask = new TaskRequest(Task.Status.INACTIVE, "Task 1", "Task 1 desc");
 
-		mockMvc.perform(put(BASE_URL + "/1")
+		mockMvc.perform(put(BASE_URL + "/tasks/1")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(newTask))
+						.header("Authorization", "Bearer " + token)
 				.accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk());
 
-		mockMvc.perform(get(BASE_URL + "/1")
-				.contentType(MediaType.APPLICATION_JSON))
+		mockMvc.perform(get(BASE_URL + "/tasks/1")
+				.contentType(MediaType.APPLICATION_JSON)
+						.header("Authorization", "Bearer " + token))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("id").value(1))
 				.andExpect(jsonPath("status").value("INACTIVE"))
@@ -258,16 +355,22 @@ class TaskControllerTests {
 	@Test
 	void changeTaskStatusToAnInvalidStatus() throws Exception {
 		TaskRequest task1 = new TaskRequest(Task.Status.ACTIVE, "Task 1", "Task 1 desc");
-		createTask(task1);
 
-		mockMvc.perform(put(BASE_URL + "/1")
+		registerBasicUser();
+		String token = loginBasicUser().split(":")[1];
+
+		createTask(task1, token);
+
+		mockMvc.perform(put(BASE_URL + "/tasks/1")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"status\": \"SILLY\",\"name\": \"Task 1\",\"description\": \"Task 1 desc\"}")
+						.header("Authorization", "Bearer " + token)
 						.accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isBadRequest());
 
-		mockMvc.perform(get(BASE_URL + "/1")
-						.contentType(MediaType.APPLICATION_JSON))
+		mockMvc.perform(get(BASE_URL + "/tasks/1")
+						.contentType(MediaType.APPLICATION_JSON)
+				.header("Authorization", "Bearer " + token))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("id").value(1))
 				.andExpect(jsonPath("status").value("ACTIVE"))
@@ -279,18 +382,24 @@ class TaskControllerTests {
 	@Test
 	void changeTaskName() throws Exception {
 		TaskRequest task1 = new TaskRequest(Task.Status.ACTIVE, "Task 1", "Task 1 desc");
-		createTask(task1);
+
+		registerBasicUser();
+		String token = loginBasicUser().split(":")[1];
+
+		createTask(task1, token);
 
 		TaskRequest newTask = new TaskRequest(Task.Status.ACTIVE, "Task 10 now", "Task 1 desc");
 
-		mockMvc.perform(put(BASE_URL + "/1")
+		mockMvc.perform(put(BASE_URL + "/tasks/1")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(objectMapper.writeValueAsString(newTask))
+						.header("Authorization", "Bearer " + token)
 						.accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk());
 
-		mockMvc.perform(get(BASE_URL + "/1")
-						.contentType(MediaType.APPLICATION_JSON))
+		mockMvc.perform(get(BASE_URL + "/tasks/1")
+						.contentType(MediaType.APPLICATION_JSON)
+				.header("Authorization", "Bearer " + token))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("id").value(1))
 				.andExpect(jsonPath("status").value("ACTIVE"))
@@ -302,18 +411,24 @@ class TaskControllerTests {
 	@Test
 	void changeTaskDescription() throws Exception {
 		TaskRequest task1 = new TaskRequest(Task.Status.ACTIVE, "Task 1", "Task 1 desc");
-		createTask(task1);
+
+		registerBasicUser();
+		String token = loginBasicUser().split(":")[1];
+
+		createTask(task1, token);
 
 		TaskRequest newTask = new TaskRequest(Task.Status.ACTIVE, "Task 1", "Task 10 desc now");
 
-		mockMvc.perform(put(BASE_URL + "/1")
+		mockMvc.perform(put(BASE_URL + "/tasks/1")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(objectMapper.writeValueAsString(newTask))
+								.header("Authorization", "Bearer " + token)
 						.accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk());
 
-		mockMvc.perform(get(BASE_URL + "/1")
-						.contentType(MediaType.APPLICATION_JSON))
+		mockMvc.perform(get(BASE_URL + "/tasks/1")
+						.contentType(MediaType.APPLICATION_JSON)
+						.header("Authorization", "Bearer " + token))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("id").value(1))
 				.andExpect(jsonPath("status").value("ACTIVE"))
@@ -325,18 +440,24 @@ class TaskControllerTests {
 	@Test
 	void changeTaskDescriptionToBlank() throws Exception {
 		TaskRequest task1 = new TaskRequest(Task.Status.ACTIVE, "Task 1", "Task 1 desc");
-		createTask(task1);
+
+		registerBasicUser();
+		String token = loginBasicUser().split(":")[1];
+
+		createTask(task1, token);
 
 		TaskRequest newTask = new TaskRequest(Task.Status.ACTIVE, "Task 1", "");
 
-		mockMvc.perform(put(BASE_URL + "/1")
+		mockMvc.perform(put(BASE_URL + "/tasks/1")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(objectMapper.writeValueAsString(newTask))
+						.header("Authorization", "Bearer " + token)
 						.accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isOk());
 
-		mockMvc.perform(get(BASE_URL + "/1")
-						.contentType(MediaType.APPLICATION_JSON))
+		mockMvc.perform(get(BASE_URL + "/tasks/1")
+						.contentType(MediaType.APPLICATION_JSON)
+				.header("Authorization", "Bearer " + token))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("id").value(1))
 				.andExpect(jsonPath("status").value("ACTIVE"))

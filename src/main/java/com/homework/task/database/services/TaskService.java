@@ -17,9 +17,9 @@ public class TaskService {
      * Saves a new task in the repository.
      *
      * @param task - The task object to be saved.
-     * @return int - The number of rows affected (usually 1 if successful, 0 if not).
+     * @return boolean - Execution result (true if successful, false if not).
      */
-    public int saveTask(Task task, String username) {
+    public boolean saveTask(Task task, String username) {
         return taskRepository.saveTask(task, username);
     }
 
@@ -36,13 +36,13 @@ public class TaskService {
     /**
      * Updates an existing task in the repository with new values.
      * If the task exists, its fields (status, name, description) will be updated with those from the new task.
-     * If the task does not exist, no changes will be made, and the method will return 0.
+     * If the task does not exist, no changes will be made, and the method will return false.
      *
      * @param id - The ID of the task to update.
      * @param newTask - The task object containing the new data to update the existing task.
-     * @return int - The number of rows affected (usually 1 if the update is successful, 0 if the task is not found).
+     * @return boolean - Execution result (true if the update is successful, false if the task is not found).
      */
-    public int updateTask(long id, Task newTask, String username) {
+    public boolean updateTask(long id, Task newTask, String username) {
         Task task = taskRepository.findById(id, username);
         if (task != null) {
             task.setStatus(newTask.getStatus());
@@ -50,7 +50,7 @@ public class TaskService {
             task.setDescription(newTask.getDescription());
             return taskRepository.updateTask(id, task);  // Save the updated record
         } else {
-            return 0;
+            return false;
         }
     }
 
